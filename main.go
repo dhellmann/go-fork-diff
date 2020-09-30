@@ -4,12 +4,10 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
-	urlpkg "net/url"
 	"os"
 	"strings"
 
-	"github.com/dhellmann/go-fork-diff/discovery"
-	"github.com/pkg/errors"
+	"github.com/dhellmann/go-fork-diff/vcs"
 	"golang.org/x/mod/modfile"
 )
 
@@ -22,26 +20,6 @@ func init() {
 		flag.PrintDefaults()
 		fmt.Fprintf(flag.CommandLine.Output(), "\n")
 	}
-}
-
-func resolveOne(importPath string) (string, error) {
-	if strings.HasPrefix(importPath, "github.com/") {
-		url, err := urlpkg.Parse(fmt.Sprintf("https://%s", importPath))
-		if err != nil {
-			return "", errors.Wrap(err, "could not parse github path")
-		}
-		repoPath := strings.Split(url.Path, "/")
-		// The 0th element of repoPath is "" so to get the base path
-		// of the repo we join the first 3 elements to get /org/repo
-		url.Path = strings.Join(repoPath[:3], "/")
-		return url.String(), nil
-	}
-
-	repoRoot, err := discovery.RepoRootForImportDynamic(importPath)
-	if err != nil {
-		return "", errors.Wrap(err, "could not determine repo root")
-	}
-	return repoRoot, nil
 }
 
 func handleError(err error) {
@@ -80,21 +58,12 @@ func main() {
 		if replaceFilterPrefix != "" && !strings.HasPrefix(replace.New.Path, replaceFilterPrefix) {
 			continue
 		}
-		fmt.Printf("%s @ %s replaces %s @ %s\n",
+		repo, err := vcs.New(replace.Old.Path,
+			replace.Old.Version,
 			replace.New.Path,
 			replace.New.Version,
-			replace.Old.Path,
-			replace.Old.Version,
 		)
+		handleError(err)
+		fmt.Printf("%v\n", repo)
 	}
-
-	// for _, importPath := range flag.Args() {
-	// 	fmt.Printf("checking %s\n", importPath)
-	// 	repoRoot, err := resolveOne(importPath)
-	// 	if err != nil {
-	// 		fmt.Printf("ERROR: %s\n", err)
-	// 		continue
-	// 	}
-	// 	fmt.Printf("-> %s\n", repoRoot)
-	// }
 }
