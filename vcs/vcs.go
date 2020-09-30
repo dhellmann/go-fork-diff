@@ -13,6 +13,8 @@ import (
 	"github.com/pkg/errors"
 )
 
+const remoteName = "replace"
+
 // Repo holds all of the information about one dependency
 type Repo struct {
 	// LocalPath is the directory on the local filesystem with the
@@ -46,6 +48,20 @@ func (r *Repo) String() string {
 	)
 }
 
+func git(verbose bool, directory string, args ...string) error {
+	cmdArgs := []string{"-C", directory}
+	cmdArgs = append(cmdArgs, args...)
+	if verbose {
+		log.Printf("git %s", strings.Join(cmdArgs, " "))
+	}
+	cmd := exec.Command("git", cmdArgs...)
+	if verbose {
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+	}
+	return cmd.Run()
+}
+
 // Clone configures the local copy of the repository with the relevant
 // remotes
 func (r *Repo) Clone(verbose bool) error {
@@ -57,23 +73,39 @@ func (r *Repo) Clone(verbose bool) error {
 	}
 
 	if _, err := os.Stat(r.localPath); os.IsNotExist(err) {
-		log.Printf("cloning %s", r.oldRepo)
-		cmd := exec.Command("git", "-C", parentDir, "clone", r.oldRepo)
-		if verbose {
-			cmd.Stdout = os.Stdout
-			cmd.Stderr = os.Stderr
-		}
-		err := cmd.Run()
+		log.Printf("%s: cloning %s", r.oldPath, r.oldRepo)
+		err := git(verbose, parentDir, "clone", r.oldRepo)
 		if err != nil {
 			return errors.Wrap(err, fmt.Sprintf("failed to clone %s", r.oldRepo))
 		}
 	} else {
 		if verbose {
-			log.Printf("found %s", r.localPath)
+			log.Printf("%s: found %s", r.oldPath, r.localPath)
+		}
+	}
+
+	err = r.git(false, "remote", "get-url", remoteName)
+	if err != nil {
+		log.Printf("%s: adding fork remote for %s", r.oldPath, r.newRepo)
+		err = r.git(verbose, "remote", "add", remoteName, r.newRepo)
+		if err != nil {
+			return errors.Wrap(err, fmt.Sprintf("could not add remote %s", r.newRepo))
+		}
+		err = r.git(verbose, "remote", "update", remoteName)
+		if err != nil {
+			return errors.Wrap(err, fmt.Sprintf("could not update remote %s", r.newRepo))
+		}
+	} else {
+		if verbose {
+			log.Printf("%s: remote: %s", r.oldPath, r.newRepo)
 		}
 	}
 
 	return nil
+}
+
+func (r *Repo) git(verbose bool, args ...string) error {
+	return git(verbose, r.localPath, args...)
 }
 
 // New creates a new Repo

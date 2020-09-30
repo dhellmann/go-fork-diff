@@ -76,6 +76,9 @@ func main() {
 			replace.New.Version,
 		)
 		handleError(err)
+		if verbose {
+			fmt.Printf("\n")
+		}
 		err = repo.Clone(verbose)
 		handleError(err)
 	}
