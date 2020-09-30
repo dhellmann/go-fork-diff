@@ -2,8 +2,10 @@ package vcs
 
 import (
 	"fmt"
+	"log"
 	urlpkg "net/url"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -46,14 +48,29 @@ func (r *Repo) String() string {
 
 // Clone configures the local copy of the repository with the relevant
 // remotes
-func (r *Repo) Clone() error {
-	err := os.MkdirAll(filepath.Dir(r.localPath), 0755)
+func (r *Repo) Clone(verbose bool) error {
+	parentDir := filepath.Dir(r.localPath)
+
+	err := os.MkdirAll(parentDir, 0755)
 	if err != nil {
 		return errors.Wrap(err, "failed to create output directory for clone")
 	}
 
 	if _, err := os.Stat(r.localPath); os.IsNotExist(err) {
-		fmt.Printf("need to clone %s\n", r.oldRepo)
+		log.Printf("cloning %s", r.oldRepo)
+		cmd := exec.Command("git", "-C", parentDir, "clone", r.oldRepo)
+		if verbose {
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+		}
+		err := cmd.Run()
+		if err != nil {
+			return errors.Wrap(err, fmt.Sprintf("failed to clone %s", r.oldRepo))
+		}
+	} else {
+		if verbose {
+			log.Printf("found %s", r.localPath)
+		}
 	}
 
 	return nil

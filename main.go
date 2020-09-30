@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"strings"
 
@@ -26,7 +27,7 @@ func handleError(err error) {
 	if err == nil {
 		return
 	}
-	fmt.Fprintf(os.Stderr, "%s\n", err)
+	log.Fatal(err)
 	os.Exit(1)
 }
 
@@ -34,6 +35,7 @@ func main() {
 	var (
 		replaceFilterPrefix string
 		workDir             string = "/tmp/go-fork-diff"
+		verbose             bool
 	)
 
 	flag.StringVar(&replaceFilterPrefix, "filter-prefix", "",
@@ -44,6 +46,7 @@ func main() {
 		"working directory")
 	flag.StringVar(&workDir, "w", workDir,
 		"working directory")
+	flag.BoolVar(&verbose, "v", false, "verbose output")
 	flag.Parse()
 
 	if len(flag.Args()) != 1 {
@@ -51,6 +54,8 @@ func main() {
 		flag.Usage()
 		os.Exit(1)
 	}
+
+	log.SetFlags(0)
 
 	modFilename := flag.Args()[0]
 	modBody, err := ioutil.ReadFile(modFilename)
@@ -71,8 +76,7 @@ func main() {
 			replace.New.Version,
 		)
 		handleError(err)
-		fmt.Printf("%v\n", repo)
-		err = repo.Clone()
+		err = repo.Clone(verbose)
 		handleError(err)
 	}
 }
