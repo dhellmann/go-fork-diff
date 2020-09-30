@@ -33,12 +33,17 @@ func handleError(err error) {
 func main() {
 	var (
 		replaceFilterPrefix string
+		workDir             string = "/tmp/go-fork-diff"
 	)
 
 	flag.StringVar(&replaceFilterPrefix, "filter-prefix", "",
 		"replacement import path prefix to include")
 	flag.StringVar(&replaceFilterPrefix, "f", "",
 		"replacement import path prefix to include")
+	flag.StringVar(&workDir, "work-dir", workDir,
+		"working directory")
+	flag.StringVar(&workDir, "w", workDir,
+		"working directory")
 	flag.Parse()
 
 	if len(flag.Args()) != 1 {
@@ -58,12 +63,16 @@ func main() {
 		if replaceFilterPrefix != "" && !strings.HasPrefix(replace.New.Path, replaceFilterPrefix) {
 			continue
 		}
-		repo, err := vcs.New(replace.Old.Path,
+		repo, err := vcs.New(
+			workDir,
+			replace.Old.Path,
 			replace.Old.Version,
 			replace.New.Path,
 			replace.New.Version,
 		)
 		handleError(err)
 		fmt.Printf("%v\n", repo)
+		err = repo.Clone()
+		handleError(err)
 	}
 }

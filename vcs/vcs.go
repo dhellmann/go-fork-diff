@@ -3,6 +3,8 @@ package vcs
 import (
 	"fmt"
 	urlpkg "net/url"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/dhellmann/go-fork-diff/discovery"
@@ -35,15 +37,32 @@ type Repo struct {
 }
 
 func (r *Repo) String() string {
-	return fmt.Sprintf("%s @ %s (%s) -> %s @ %s (%s)",
+	return fmt.Sprintf("%s @ %s (%s) -> %s @ %s (%s) [%s]",
 		r.oldPath, r.oldVersion, r.oldRepo,
 		r.newPath, r.newVersion, r.newRepo,
+		r.localPath,
 	)
 }
 
+// Clone configures the local copy of the repository with the relevant
+// remotes
+func (r *Repo) Clone() error {
+	err := os.MkdirAll(filepath.Dir(r.localPath), 0755)
+	if err != nil {
+		return errors.Wrap(err, "failed to create output directory for clone")
+	}
+
+	if _, err := os.Stat(r.localPath); os.IsNotExist(err) {
+		fmt.Printf("need to clone %s\n", r.oldRepo)
+	}
+
+	return nil
+}
+
 // New creates a new Repo
-func New(oldPath, oldVersion, newPath, newVersion string) (*Repo, error) {
+func New(workDir, oldPath, oldVersion, newPath, newVersion string) (*Repo, error) {
 	repo := Repo{
+		localPath:  filepath.Join(workDir, oldPath),
 		oldPath:    oldPath,
 		oldVersion: oldVersion,
 		newPath:    newPath,
