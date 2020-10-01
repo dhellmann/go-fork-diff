@@ -91,15 +91,15 @@ func (r *Repo) Clone(verbose bool) error {
 		if err != nil {
 			return errors.Wrap(err, fmt.Sprintf("could not add remote %s", r.newRepo))
 		}
+
+		err = r.git(verbose, "fetch", "--all", "--tags")
+		if err != nil {
+			return errors.Wrap(err, fmt.Sprintf("could not update remote %s", r.newRepo))
+		}
 	} else {
 		if verbose {
 			log.Printf("%s: remote: %s", r.oldPath, r.newRepo)
 		}
-	}
-
-	err = r.git(verbose, "fetch", "--all", "--tags")
-	if err != nil {
-		return errors.Wrap(err, fmt.Sprintf("could not update remote %s", r.newRepo))
 	}
 
 	return nil
