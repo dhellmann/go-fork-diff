@@ -15,8 +15,36 @@ import (
 
 const remoteName = "replace"
 
+// New creates a new Repo
+func New(workDir, oldPath, oldVersion, newPath, newVersion string) (*Repo, error) {
+	repo := Repo{
+		workDir:    workDir,
+		localPath:  filepath.Join(workDir, oldPath),
+		oldPath:    oldPath,
+		oldVersion: oldVersion,
+		newPath:    newPath,
+		newVersion: newVersion,
+	}
+
+	oldRepo, err := resolveOne(oldPath)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not resolve old repository from module path")
+	}
+	repo.oldRepo = oldRepo
+
+	newRepo, err := resolveOne(newPath)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not resolve new repository from module path")
+	}
+	repo.newRepo = newRepo
+
+	return &repo, nil
+}
+
 // Repo holds all of the information about one dependency
 type Repo struct {
+	workDir string
+
 	// LocalPath is the directory on the local filesystem with the
 	// cloned repo
 	localPath string
@@ -62,6 +90,35 @@ func git(verbose bool, directory string, args ...string) error {
 	return cmd.Run()
 }
 
+func cloneToCache(verbose bool, cachePath string, repoURL string) error {
+	_, err := os.Stat(cachePath)
+	if err == nil {
+		// cache exists
+		if verbose {
+			log.Printf("have cache for %s", repoURL)
+		}
+		return nil
+	}
+
+	if !os.IsNotExist(err) {
+		// real error
+		return errors.Wrap(err, "error checking cache")
+	}
+
+	cacheParentDir := filepath.Dir(cachePath)
+	err = os.MkdirAll(cacheParentDir, 0755)
+	if err != nil {
+		return errors.Wrap(err, "failed to create cache directory for cache")
+	}
+
+	log.Printf("caching %s in %s", repoURL, cachePath)
+	err = git(verbose, cacheParentDir, "clone", repoURL)
+	if err != nil {
+		return errors.Wrap(err, fmt.Sprintf("failed to clone %s", repoURL))
+	}
+	return nil
+}
+
 // Clone configures the local copy of the repository with the relevant
 // remotes
 func (r *Repo) Clone(verbose bool) error {
@@ -72,9 +129,21 @@ func (r *Repo) Clone(verbose bool) error {
 		return errors.Wrap(err, "failed to create output directory for clone")
 	}
 
+	oldCachePath := filepath.Join(r.workDir, "_cache", r.oldRepo[8:])
+	err = cloneToCache(verbose, oldCachePath, r.oldRepo)
+	if err != nil {
+		return errors.Wrap(err, fmt.Sprintf("failed to create cache of %s", r.oldRepo))
+	}
+
+	newCachePath := filepath.Join(r.workDir, "_cache", r.newRepo[8:])
+	err = cloneToCache(verbose, newCachePath, r.newRepo)
+	if err != nil {
+		return errors.Wrap(err, fmt.Sprintf("failed to create cache of %s", r.newRepo))
+	}
+
 	if _, err := os.Stat(r.localPath); os.IsNotExist(err) {
 		log.Printf("%s: cloning %s", r.oldPath, r.oldRepo)
-		err := git(verbose, parentDir, "clone", r.oldRepo)
+		err := git(verbose, parentDir, "clone", oldCachePath)
 		if err != nil {
 			return errors.Wrap(err, fmt.Sprintf("failed to clone %s", r.oldRepo))
 		}
@@ -87,7 +156,7 @@ func (r *Repo) Clone(verbose bool) error {
 	err = r.git(false, "remote", "get-url", remoteName)
 	if err != nil {
 		log.Printf("%s: adding fork remote for %s", r.oldPath, r.newRepo)
-		err = r.git(verbose, "remote", "add", remoteName, r.newRepo)
+		err = r.git(verbose, "remote", "add", remoteName, newCachePath)
 		if err != nil {
 			return errors.Wrap(err, fmt.Sprintf("could not add remote %s", r.newRepo))
 		}
@@ -148,31 +217,6 @@ func (r *Repo) DiffStat() error {
 
 func (r *Repo) git(verbose bool, args ...string) error {
 	return git(verbose, r.localPath, args...)
-}
-
-// New creates a new Repo
-func New(workDir, oldPath, oldVersion, newPath, newVersion string) (*Repo, error) {
-	repo := Repo{
-		localPath:  filepath.Join(workDir, oldPath),
-		oldPath:    oldPath,
-		oldVersion: oldVersion,
-		newPath:    newPath,
-		newVersion: newVersion,
-	}
-
-	oldRepo, err := resolveOne(oldPath)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not resolve old repository from module path")
-	}
-	repo.oldRepo = oldRepo
-
-	newRepo, err := resolveOne(newPath)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not resolve new repository from module path")
-	}
-	repo.newRepo = newRepo
-
-	return &repo, nil
 }
 
 func resolveOne(importPath string) (string, error) {
