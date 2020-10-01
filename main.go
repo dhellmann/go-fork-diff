@@ -113,7 +113,7 @@ func main() {
 		fmt.Printf("\n------------------------------------------------------------\n%s\n------------------------------------------------------------\n\n", repo.String())
 		err = repo.Log()
 		handleError(err)
-		fmt.Printf("\n")
+		fmt.Printf("\n\n")
 		err = repo.DiffStat()
 		handleError(err)
 	}
