@@ -120,13 +120,29 @@ func (r *Repo) gitRange() string {
 	return fmt.Sprintf("%s..%s", refFromVersion(r.oldVersion), refFromVersion(r.newVersion))
 }
 
+func (r *Repo) commonAncestor() bool {
+	err := r.git(false, "merge-base", "origin/master", fmt.Sprintf("%s/master", remoteName))
+	if err != nil {
+		return false
+	}
+	return true
+}
+
 // Log shows the simple log output between the two versions
 func (r *Repo) Log() error {
+	if !r.commonAncestor() {
+		fmt.Printf("No common ancestor, not logging.\n")
+		return nil
+	}
 	return r.git(true, "log", "--oneline", r.gitRange())
 }
 
 // DiffStat shows the diff statistics between the two versions
 func (r *Repo) DiffStat() error {
+	if !r.commonAncestor() {
+		fmt.Printf("No common ancestor, not diffing.\n")
+		return nil
+	}
 	return r.git(true, "diff", "--stat=120", r.gitRange())
 }
 
