@@ -80,6 +80,21 @@ func main() {
 		err = repo.Clone(verbose)
 		handleError(err)
 		fmt.Printf("\n")
+	}
+
+	for _, replace := range mod.Replace {
+		if replaceFilterPrefix != "" && !strings.HasPrefix(replace.New.Path, replaceFilterPrefix) {
+			continue
+		}
+		repo, err := vcs.New(
+			workDir,
+			replace.Old.Path,
+			replace.Old.Version,
+			replace.New.Path,
+			replace.New.Version,
+		)
+		handleError(err)
+		fmt.Printf("\n--------------------\n%s\n--------------------\n\n", repo.String())
 		err = repo.Log()
 		handleError(err)
 		fmt.Printf("\n")
