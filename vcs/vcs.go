@@ -36,6 +36,10 @@ func New(workDir, oldPath, oldVersion, newPath, newVersion string, repoAliases [
 			fmt.Fprintf(os.Stderr, "replacing %s for %s with alias %s\n",
 				oldPath, newPath, alias.OldRepo)
 			oldPath = alias.OldRepo
+			repo.aliased, _ = resolveOne(repo.oldPath)
+			if repo.aliased == "" {
+				repo.aliased = repo.oldPath
+			}
 			break
 		}
 	}
@@ -80,14 +84,21 @@ type Repo struct {
 
 	// NewRepo is the URL to the new repository
 	newRepo string
+
+	// aliased holds the oldPath value that was replaced by the alias
+	aliased string
 }
 
 func (r *Repo) String() string {
-	return fmt.Sprintf("%s @ %s (%s)\n  -> %s @ %s (%s)\n  [%s]",
+	s := fmt.Sprintf("%s @ %s (%s)\n  replace: %s @ %s (%s)\n  locally: %s",
 		r.oldPath, r.oldVersion, r.oldRepo,
 		r.newPath, r.newVersion, r.newRepo,
 		r.localPath,
 	)
+	if r.aliased != "" {
+		s = fmt.Sprintf("%s\n  aliased: %s", s, r.aliased)
+	}
+	return s
 }
 
 func git(verbose bool, directory string, args ...string) error {
