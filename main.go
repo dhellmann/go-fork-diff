@@ -78,10 +78,24 @@ func main() {
 			!strings.HasPrefix(replace.New.Path, replaceFilterPrefix) {
 			continue
 		}
+
+		// If we don't have a good version specifier in the replace
+		// statement, look for the original version from the thing
+		// that was being replaced.
+		oldVersion := replace.Old.Version
+		if oldVersion == "" {
+			for _, req := range mod.Require {
+				if req.Mod.Path == replace.Old.Path {
+					oldVersion = req.Mod.Version
+					break
+				}
+			}
+		}
+
 		repo, err := vcs.New(
 			workDir,
 			replace.Old.Path,
-			replace.Old.Version,
+			oldVersion,
 			replace.New.Path,
 			replace.New.Version,
 			repoAliases,
