@@ -105,10 +105,8 @@ func main() {
 	}
 
 	for _, repo := range repos {
-		fmt.Printf("\n------------------------------------------------------------\n%s\n------------------------------------------------------------\n\n", repo.String())
 		err = repo.Clone(verbose)
 		handleError(err)
-		fmt.Printf("\n")
 	}
 
 	for _, repo := range repos {
