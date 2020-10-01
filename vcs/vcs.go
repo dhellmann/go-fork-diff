@@ -83,7 +83,7 @@ type Repo struct {
 }
 
 func (r *Repo) String() string {
-	return fmt.Sprintf("%s @ %s (%s) -> %s @ %s (%s) [%s]",
+	return fmt.Sprintf("%s @ %s (%s)\n  -> %s @ %s (%s)\n  [%s]",
 		r.oldPath, r.oldVersion, r.oldRepo,
 		r.newPath, r.newVersion, r.newRepo,
 		r.localPath,
