@@ -33,7 +33,8 @@ func New(workDir, oldPath, oldVersion, newPath, newVersion string, repoAliases [
 
 	for _, alias := range repoAliases {
 		if strings.HasPrefix(newPath, alias.NewPrefix) {
-			fmt.Printf("replacing %s for %s with alias %s\n", oldPath, newPath, alias.OldRepo)
+			fmt.Fprintf(os.Stderr, "replacing %s for %s with alias %s\n",
+				oldPath, newPath, alias.OldRepo)
 			oldPath = alias.OldRepo
 			break
 		}
