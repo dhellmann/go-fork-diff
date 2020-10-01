@@ -64,8 +64,18 @@ func main() {
 	mod, err := modfile.Parse(modFilename, modBody, nil)
 	handleError(err)
 
+	// TODO: Add a command line option for specifying these.
+	repoAliases := []vcs.Alias{
+		{
+			NewPrefix: "github.com/rancher/kubernetes/staging",
+			OldRepo:   "github.com/kubernetes/kubernetes",
+		},
+	}
+
+	repos := make([]*vcs.Repo, 0)
 	for _, replace := range mod.Replace {
-		if replaceFilterPrefix != "" && !strings.HasPrefix(replace.New.Path, replaceFilterPrefix) {
+		if replaceFilterPrefix != "" &&
+			!strings.HasPrefix(replace.New.Path, replaceFilterPrefix) {
 			continue
 		}
 		repo, err := vcs.New(
@@ -74,26 +84,20 @@ func main() {
 			replace.Old.Version,
 			replace.New.Path,
 			replace.New.Version,
+			repoAliases,
 		)
 		handleError(err)
+		repos = append(repos, repo)
+	}
+
+	for _, repo := range repos {
 		fmt.Printf("\n--------------------\n%s\n--------------------\n\n", repo.String())
 		err = repo.Clone(verbose)
 		handleError(err)
 		fmt.Printf("\n")
 	}
 
-	for _, replace := range mod.Replace {
-		if replaceFilterPrefix != "" && !strings.HasPrefix(replace.New.Path, replaceFilterPrefix) {
-			continue
-		}
-		repo, err := vcs.New(
-			workDir,
-			replace.Old.Path,
-			replace.Old.Version,
-			replace.New.Path,
-			replace.New.Version,
-		)
-		handleError(err)
+	for _, repo := range repos {
 		fmt.Printf("\n--------------------\n%s\n--------------------\n\n", repo.String())
 		err = repo.Log()
 		handleError(err)

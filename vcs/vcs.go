@@ -15,8 +15,13 @@ import (
 
 const remoteName = "replace"
 
+type Alias struct {
+	NewPrefix string
+	OldRepo   string
+}
+
 // New creates a new Repo
-func New(workDir, oldPath, oldVersion, newPath, newVersion string) (*Repo, error) {
+func New(workDir, oldPath, oldVersion, newPath, newVersion string, repoAliases []Alias) (*Repo, error) {
 	repo := Repo{
 		workDir:    workDir,
 		localPath:  filepath.Join(workDir, oldPath),
@@ -24,6 +29,14 @@ func New(workDir, oldPath, oldVersion, newPath, newVersion string) (*Repo, error
 		oldVersion: oldVersion,
 		newPath:    newPath,
 		newVersion: newVersion,
+	}
+
+	for _, alias := range repoAliases {
+		if strings.HasPrefix(newPath, alias.NewPrefix) {
+			fmt.Printf("replacing %s for %s with alias %s\n", oldPath, newPath, alias.OldRepo)
+			oldPath = alias.OldRepo
+			break
+		}
 	}
 
 	oldRepo, err := resolveOne(oldPath)
@@ -143,7 +156,7 @@ func (r *Repo) Clone(verbose bool) error {
 
 	if _, err := os.Stat(r.localPath); os.IsNotExist(err) {
 		log.Printf("%s: cloning %s", r.oldPath, r.oldRepo)
-		err := git(verbose, parentDir, "clone", oldCachePath)
+		err := git(verbose, parentDir, "clone", oldCachePath, filepath.Base(r.localPath))
 		if err != nil {
 			return errors.Wrap(err, fmt.Sprintf("failed to clone %s", r.oldRepo))
 		}
