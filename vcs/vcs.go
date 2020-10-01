@@ -49,7 +49,7 @@ func (r *Repo) String() string {
 }
 
 func git(verbose bool, directory string, args ...string) error {
-	cmdArgs := []string{"-C", directory}
+	cmdArgs := []string{"--no-pager", "-C", directory}
 	cmdArgs = append(cmdArgs, args...)
 	if verbose {
 		log.Printf("git %s", strings.Join(cmdArgs, " "))
@@ -91,17 +91,43 @@ func (r *Repo) Clone(verbose bool) error {
 		if err != nil {
 			return errors.Wrap(err, fmt.Sprintf("could not add remote %s", r.newRepo))
 		}
-		err = r.git(verbose, "remote", "update", remoteName)
-		if err != nil {
-			return errors.Wrap(err, fmt.Sprintf("could not update remote %s", r.newRepo))
-		}
 	} else {
 		if verbose {
 			log.Printf("%s: remote: %s", r.oldPath, r.newRepo)
 		}
 	}
 
+	err = r.git(verbose, "fetch", "--all", "--tags")
+	if err != nil {
+		return errors.Wrap(err, fmt.Sprintf("could not update remote %s", r.newRepo))
+	}
+
 	return nil
+}
+
+func refFromVersion(version string) string {
+	if version == "" {
+		return "origin/master"
+	}
+	parts := strings.Split(version, "-")
+	if len(parts) >= 3 {
+		return parts[len(parts)-1]
+	}
+	return version
+}
+
+func (r *Repo) gitRange() string {
+	return fmt.Sprintf("%s..%s", refFromVersion(r.oldVersion), refFromVersion(r.newVersion))
+}
+
+// Log shows the simple log output between the two versions
+func (r *Repo) Log() error {
+	return r.git(true, "log", "--oneline", r.gitRange())
+}
+
+// DiffStat shows the diff statistics between the two versions
+func (r *Repo) DiffStat() error {
+	return r.git(true, "diff", "--stat=120", r.gitRange())
 }
 
 func (r *Repo) git(verbose bool, args ...string) error {

@@ -76,10 +76,14 @@ func main() {
 			replace.New.Version,
 		)
 		handleError(err)
-		if verbose {
-			fmt.Printf("\n")
-		}
+		fmt.Printf("\n--------------------\n%s\n--------------------\n\n", repo.String())
 		err = repo.Clone(verbose)
+		handleError(err)
+		fmt.Printf("\n")
+		err = repo.Log()
+		handleError(err)
+		fmt.Printf("\n")
+		err = repo.DiffStat()
 		handleError(err)
 	}
 }
