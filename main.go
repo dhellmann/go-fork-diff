@@ -91,6 +91,14 @@ func main() {
 				}
 			}
 		}
+		// If we still don't have a version, try stripping the suffix
+		// (like "-k3s1") from the new version.
+		if oldVersion == "" {
+			parts := strings.Split(replace.New.Version, "-")
+			if len(parts) > 1 {
+				oldVersion = parts[0]
+			}
+		}
 
 		repo, err := vcs.New(
 			workDir,
