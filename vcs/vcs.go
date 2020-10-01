@@ -235,7 +235,13 @@ func (r *Repo) Log() error {
 		return nil
 	}
 
-	args := []string{"log", "--oneline", r.gitRange()}
+	args := []string{
+		"log",
+		"--pretty=format:%h %cd %s",
+		"--date=iso",
+		"--decorate",
+		r.gitRange(),
+	}
 	path := r.path()
 	if path != "" {
 		args = append(args, "--", path)
