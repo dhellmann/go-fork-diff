@@ -204,11 +204,19 @@ func (r *Repo) gitRange() string {
 }
 
 func (r *Repo) commonAncestor() bool {
-	err := r.git(false, "merge-base", "origin/master", fmt.Sprintf("%s/master", remoteName))
+	err := r.git(false, "merge-base", refFromVersion(r.oldVersion), refFromVersion(r.newVersion))
 	if err != nil {
 		return false
 	}
 	return true
+}
+
+func (r *Repo) path() string {
+	parts := strings.SplitN(r.newPath, "/", 4)
+	if len(parts) > 3 {
+		return parts[3]
+	}
+	return ""
 }
 
 // Log shows the simple log output between the two versions
@@ -217,7 +225,14 @@ func (r *Repo) Log() error {
 		fmt.Printf("No common ancestor, not logging.\n")
 		return nil
 	}
-	return r.git(true, "log", "--oneline", r.gitRange())
+
+	args := []string{"log", "--oneline", r.gitRange()}
+	path := r.path()
+	if path != "" {
+		args = append(args, "--", path)
+	}
+
+	return r.git(true, args...)
 }
 
 // DiffStat shows the diff statistics between the two versions
@@ -226,7 +241,16 @@ func (r *Repo) DiffStat() error {
 		fmt.Printf("No common ancestor, not diffing.\n")
 		return nil
 	}
-	return r.git(true, "diff", "--stat=120", r.gitRange())
+
+	args := []string{"diff", "--stat=120", r.gitRange(), "--"}
+	path := r.path()
+	if path != "" {
+		args = append(args, path)
+	} else {
+		args = append(args, ".", ":!vendor")
+	}
+
+	return r.git(true, args...)
 }
 
 func (r *Repo) git(verbose bool, args ...string) error {
