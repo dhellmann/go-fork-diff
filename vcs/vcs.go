@@ -94,7 +94,7 @@ func git(verbose bool, directory string, args ...string) error {
 	cmdArgs := []string{"--no-pager", "-C", directory}
 	cmdArgs = append(cmdArgs, args...)
 	if verbose {
-		log.Printf("git %s", strings.Join(cmdArgs, " "))
+		log.Printf("git %s\n\n", strings.Join(cmdArgs, " "))
 	}
 	cmd := exec.Command("git", cmdArgs...)
 	if verbose {
