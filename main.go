@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/dhellmann/go-fork-diff/vcs"
@@ -72,6 +73,8 @@ func main() {
 		},
 	}
 
+	suffixMatcher := regexp.MustCompile(`-k3s\d$`)
+
 	repos := make([]*vcs.Repo, 0)
 	for _, replace := range mod.Replace {
 		if replaceFilterPrefix != "" &&
@@ -79,24 +82,23 @@ func main() {
 			continue
 		}
 
-		// If we don't have a good version specifier in the replace
-		// statement, look for the original version from the thing
-		// that was being replaced.
 		oldVersion := replace.Old.Version
-		if oldVersion == "" {
-			for _, req := range mod.Require {
-				if req.Mod.Path == replace.Old.Path {
-					oldVersion = req.Mod.Version
-					break
+
+		// If we have a -k3sN suffix in the new version, strip that
+		// and use the remaining value as the old version.
+		if suffixMatcher.MatchString(replace.New.Version) {
+			oldVersion = suffixMatcher.ReplaceAllLiteralString(replace.New.Version, "")
+		} else {
+			// If we don't have a good version specifier in the replace
+			// statement, look for the original version from the thing
+			// that was being replaced.
+			if oldVersion == "" {
+				for _, req := range mod.Require {
+					if req.Mod.Path == replace.Old.Path {
+						oldVersion = req.Mod.Version
+						break
+					}
 				}
-			}
-		}
-		// If we still don't have a version, try stripping the suffix
-		// (like "-k3s1") from the new version.
-		if oldVersion == "" {
-			parts := strings.Split(replace.New.Version, "-")
-			if len(parts) > 1 {
-				oldVersion = parts[0]
 			}
 		}
 
