@@ -208,15 +208,30 @@ func refFromVersion(version string) string {
 	if version == "" || version == "v0.0.0" {
 		return ""
 	}
-	parts := strings.Split(version, "-")
+
+	result := version
+
+	// if the version look like
+	// v11.0.1-0.20190409021438-1a26190bd76a+incompatible start with
+	// the 3rd part
+	parts := strings.Split(result, "-")
 	if len(parts) >= 3 {
-		result := parts[len(parts)-1]
-		if strings.Trim(result, "0") == "" {
-			result = ""
-		}
-		return result
+		result = parts[len(parts)-1]
 	}
-	return version
+
+	// if the version looks like 1a26190bd76a+incompatible take the
+	// first part
+	parts = strings.Split(result, "+")
+	if len(parts) > 1 {
+		result = parts[0]
+	}
+
+	// if the version is now all zeros, return empty string
+	if strings.Trim(result, "0") == "" {
+		result = ""
+	}
+
+	return result
 }
 
 func (r *Repo) gitRefs() (string, string) {
