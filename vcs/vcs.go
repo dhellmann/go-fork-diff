@@ -198,22 +198,41 @@ func (r *Repo) Clone(verbose bool) error {
 }
 
 func refFromVersion(version string) string {
-	if version == "" {
-		return "origin/master"
+	if version == "" || version == "v0.0.0" {
+		return ""
 	}
 	parts := strings.Split(version, "-")
 	if len(parts) >= 3 {
-		return parts[len(parts)-1]
+		result := parts[len(parts)-1]
+		if strings.Trim(result, "0") == "" {
+			result = ""
+		}
+		return result
 	}
 	return version
 }
 
+func (r *Repo) gitRefs() (string, string) {
+	oldRef := refFromVersion(r.oldVersion)
+	if oldRef == "" {
+		oldRef = "origin/master"
+	}
+	newRef := refFromVersion(r.newVersion)
+	if newRef == "" {
+		newRef = "remotes/replace/master"
+	}
+	return oldRef, newRef
+}
+
 func (r *Repo) gitRange() string {
-	return fmt.Sprintf("%s..%s", refFromVersion(r.oldVersion), refFromVersion(r.newVersion))
+	oldRef, newRef := r.gitRefs()
+	result := fmt.Sprintf("%s..%s", oldRef, newRef)
+	return result
 }
 
 func (r *Repo) commonAncestor() bool {
-	err := r.git(false, "merge-base", refFromVersion(r.oldVersion), refFromVersion(r.newVersion))
+	oldRef, newRef := r.gitRefs()
+	err := r.git(false, "merge-base", oldRef, newRef)
 	if err != nil {
 		return false
 	}
@@ -230,8 +249,11 @@ func (r *Repo) path() string {
 
 // Log shows the simple log output between the two versions
 func (r *Repo) Log() error {
+
+	startEnd := r.gitRange()
+
 	if !r.commonAncestor() {
-		fmt.Printf("No common ancestor, not logging.\n")
+		fmt.Printf("No common ancestor, not logging %s.\n", startEnd)
 		return nil
 	}
 
@@ -240,7 +262,7 @@ func (r *Repo) Log() error {
 		"--pretty=format:%h %cd %s",
 		"--date=iso",
 		"--decorate",
-		r.gitRange(),
+		startEnd,
 	}
 	path := r.path()
 	if path != "" {
@@ -252,8 +274,11 @@ func (r *Repo) Log() error {
 
 // DiffStat shows the diff statistics between the two versions
 func (r *Repo) DiffStat() error {
+
+	startEnd := r.gitRange()
+
 	if !r.commonAncestor() {
-		fmt.Printf("No common ancestor, not diffing.\n")
+		fmt.Printf("No common ancestor, not diffing %s.\n", startEnd)
 		return nil
 	}
 
