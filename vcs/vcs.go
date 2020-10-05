@@ -304,7 +304,7 @@ func (r *Repo) DiffStat() error {
 		return nil
 	}
 
-	args := []string{"diff", "--stat=120", r.gitRange(), "--"}
+	args := []string{"diff", "--stat=80", r.gitRange(), "--"}
 	path := r.path()
 	if path != "" {
 		args = append(args, path)
